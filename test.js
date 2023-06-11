@@ -114,6 +114,8 @@ class ElementTree {
 
         this.scanTree(filler);
         this.arrangeElems();
+        this.appendExtraNodes();
+        this.arrangeElems();
         this.recalcSizes();
         this.recalcPositions();
     }
@@ -149,7 +151,7 @@ class ElementTree {
     drawElement(el, ctx) {
         const levelRatio = el.level * 10;
         ctx.fillStyle = el.type === 'JOB' ? '#eeffee' : 'white';
-        ctx.strokeStyle = el.type === 'JOB' ? 'darkgreen' : 'blue';
+        ctx.strokeStyle = el.type === 'JOB' ? 'darkgreen' : el.type === 'TASK' ? 'blue' : 'red';
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.rect(
@@ -186,6 +188,38 @@ class ElementTree {
             this.drawElement(el, ctx);
         });
         this.links.forEach(link => this.drawLink(link, ctx));
+    }
+
+    appendExtraNodes() {
+        this.elems.forEach(el => {
+            if (el.execType === EXEC_TYPES.seq) {
+                const newChildren = [];
+                for (let i = 0; i < el.children.length; i++) {
+                    const el1 = el.children[i];
+                    const el2 = el.children[i + 1];
+                    newChildren.push(el1);
+                    if (el2) {
+                        if (
+                            el1.execType === EXEC_TYPES.par &&
+                            el2.execType === EXEC_TYPES.par &&
+                            el1.children.length > 1 &&
+                            el2.children.length > 1
+                        ) {
+                            // не передаем parent в конструктор, т.к. добавим в список children ниже
+                            const node = new Element();
+                            node.type = 'NODE';
+                            node.parent = el;
+                            node.level = el.level + 1;
+                            node.w = 1;
+                            node.h = 1;
+                            node.id = 0;
+                            newChildren.push(node);
+                        }
+                    }
+                }
+                el.children = newChildren;
+            }
+        });
     }
 
     findLinks() {
@@ -248,8 +282,6 @@ class ElementTree {
 
             this.links = this.links.filter(link => link.status !== 'deleted');
         } while (isFound);
-
-        console.log(this.links);
     }
 }
 

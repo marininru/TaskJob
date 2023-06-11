@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Document</title>
+        <script src="test.js"></script>
+        <script>
+            window.addEventListener('DOMContentLoaded', () => {
+                const divTree = document.getElementById('tree');
+                tree.drawTree(divTree);
+
+                let canvas = document.getElementById('сanvas');
+                tree.drawSchema(canvas);
+                let ctx = canvas.getContext('2d');
+            });
+        </script>
+    </head>
+    <body>
+        <div id="tree"></div>
+        <div>
+            <canvas
+                id="сanvas"
+                width="1000"
+                height="1000"
+                style="
+                    border: 1px solid #d3d3d3;
+                    display: block;
+                    margin: 0 auto;
+                    width: 90%;
+                    max-width: 1200px;
+                "
+            ></canvas>
+        </div>
+    </body>
+</html>

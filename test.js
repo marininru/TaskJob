@@ -16,6 +16,18 @@ class Element {
     appendChild(el) {
         return this.children.push(el);
     }
+
+    getColor() {
+        return this.type === 'JOB' ? 'darkgreen' : this.type === 'TASK' ? 'blue' : 'red';
+    }
+
+    getBgColor() {
+        return this.type === 'JOB' ? '#eeffee' : this.type === 'TASK' ? 'white' : '#ffeeee';
+    }
+
+    getExecTypeIcon() {
+        return this.type === 'TASK' ? EXEC_ICON[this.execType] : '';
+    }
 }
 
 class ElementTree {
@@ -129,9 +141,9 @@ class ElementTree {
 
             var li = document.createElement('li');
 
-            li.textContent = `${el.id}: ${el.type} ${
-                el.type === 'TASK' ? EXEC_ICON[el.execType] : ''
-            } (${el.w}x${el.h}) [${el.l}x${el.t}]`;
+            li.innerHTML = `<span style="color:${el.getColor()}">${el.id}: ${
+                el.type
+            } ${el.getExecTypeIcon()}</span>`;
 
             parentDomElem.appendChild(li);
 
@@ -150,8 +162,8 @@ class ElementTree {
 
     drawElement(el, ctx) {
         const levelRatio = el.level * 10;
-        ctx.fillStyle = el.type === 'JOB' ? '#eeffee' : 'white';
-        ctx.strokeStyle = el.type === 'JOB' ? 'darkgreen' : el.type === 'TASK' ? 'blue' : 'red';
+        ctx.fillStyle = el.getBgColor();
+        ctx.strokeStyle = el.getColor();
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.rect(
@@ -169,25 +181,49 @@ class ElementTree {
         ctx.fillText(el.id, el.l * ratio + levelRatio + 1, el.t * ratio + levelRatio + 1);
     }
 
-    drawLink(link, ctx) {
-        // Установка свойства для линии стрелки
+    drawArrow(ctx, fromX, fromY, toX, toY) {
         ctx.strokeStyle = 'black';
         ctx.lineWidth = 1;
         ctx.lineCap = 'round';
 
-        // Рисование линии
         ctx.beginPath();
-        ctx.moveTo(link.src.l * ratio + ratio / 2 + 10, link.src.t * ratio + ratio / 2);
-        ctx.lineTo(link.dst.l * ratio + ratio / 2 - 10, link.dst.t * ratio + ratio / 2);
+        ctx.moveTo(fromX, fromY);
+        ctx.lineTo(toX, toY);
         ctx.stroke();
+
+        drawArrowhead(toX, toY, Math.atan2(toY - fromY, toX - fromX));
+
+        function drawArrowhead(x, y, radians) {
+            const arrowSize = 10;
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(
+                x - arrowSize * Math.cos(radians - Math.PI / 10),
+                y - arrowSize * Math.sin(radians - Math.PI / 10)
+            );
+            ctx.moveTo(x, y);
+            ctx.lineTo(
+                x - arrowSize * Math.cos(radians + Math.PI / 10),
+                y - arrowSize * Math.sin(radians + Math.PI / 10)
+            );
+            ctx.stroke();
+        }
     }
 
-    drawSchema(canvas) {
-        let ctx = canvas.getContext('2d');
+    drawSchema(ctx) {
+        const drawLink = (link, ctx) => {
+            this.drawArrow(
+                ctx,
+                link.src.l * ratio + ratio / 2 + 10,
+                link.src.t * ratio + ratio / 2,
+                link.dst.l * ratio + ratio / 2 - 10,
+                link.dst.t * ratio + ratio / 2
+            );
+        };
         this.elems.forEach(el => {
             this.drawElement(el, ctx);
         });
-        this.links.forEach(link => this.drawLink(link, ctx));
+        this.links.forEach(link => drawLink(link, ctx));
     }
 
     appendExtraNodes() {

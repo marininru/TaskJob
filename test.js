@@ -1,19 +1,28 @@
-const EXEC_TYPES = { seq: 'sequential', par: 'parallel' };
-const EXEC_ICON = { [EXEC_TYPES.seq]: '→', [EXEC_TYPES.par]: '∥' };
+const EXEC_MODES = { seq: 'C', par: 'P' };
+const EXEC_ICON = { [EXEC_MODES.seq]: '→', [EXEC_MODES.par]: '∥' };
 const ratio = 100;
 
-class Element {
-    constructor(parent) {
+class BPTree {
+    constructor(bp) {
+        this.bp = bp;
+    }
+}
+
+class BPNode {
+    constructor({ bp, type, execMode, parent }) {
         this.id = undefined;
-        this.type = undefined;
-        this.execType = undefined;
+        this.type = type;
+        this.execMode = execMode;
         this.parent = parent;
+        this.bp = bp;
         this.children = [];
         if (parent) {
             parent.appendChild(this);
         }
     }
     appendChild(el) {
+        el.level = this.level + 1;
+        el.bp = this.bp;
         return this.children.push(el);
     }
 
@@ -26,11 +35,11 @@ class Element {
     }
 
     getExecTypeIcon() {
-        return this.type === 'TASK' ? EXEC_ICON[this.execType] : '';
+        return this.type === 'TASK' ? EXEC_ICON[this.execMode] : '';
     }
 }
 
-class ElementTree {
+class BP {
     constructor() {
         this.root = null;
         this.elems = [];
@@ -39,6 +48,8 @@ class ElementTree {
 
     addRootElement(el) {
         this.root = el;
+        el.level = 0;
+        el.bp = this;
     }
 
     scanTree(func) {
@@ -61,7 +72,7 @@ class ElementTree {
                 let w = 0;
                 let h = 0;
                 el.children.forEach(cld => {
-                    if (el.execType === EXEC_TYPES.seq) {
+                    if (el.execMode === EXEC_MODES.seq) {
                         w += cld.w;
                         h = Math.max(h, cld.h);
                     } else {
@@ -82,7 +93,7 @@ class ElementTree {
             el.children.forEach(cld => {
                 cld.l = l;
                 cld.t = t;
-                if (el.execType === EXEC_TYPES.seq) {
+                if (el.execMode === EXEC_MODES.seq) {
                     l += cld.w;
                 } else {
                     t += cld.h;
@@ -93,16 +104,14 @@ class ElementTree {
 
     genarateRandomTree() {
         const allElems = [];
-        const el = new Element(null);
-        el.level = 0;
+        const el = new BPNode({});
         allElems.push(el);
         this.addRootElement(el);
 
         for (let i = 0; i < 5; i++) {
             const parentIdx = Math.floor(Math.random() * allElems.length);
             for (let j = 0; j < Math.floor(Math.random() * 2 + 2); j++) {
-                const el = new Element(allElems[parentIdx]);
-                el.level = allElems[parentIdx].level + 1;
+                const el = new BPNode({ parent: allElems[parentIdx] });
                 allElems.push(el);
             }
         }
@@ -114,7 +123,7 @@ class ElementTree {
             el.l = 0;
             if (el.children.length) {
                 el.type = 'TASK';
-                el.execType = Math.random() < 0.5 ? EXEC_TYPES.par : EXEC_TYPES.seq;
+                el.execMode = Math.random() < 0.5 ? EXEC_MODES.par : EXEC_MODES.seq;
                 el.w = 0;
                 el.h = 0;
             } else {
@@ -228,7 +237,7 @@ class ElementTree {
 
     appendExtraNodes() {
         this.elems.forEach(el => {
-            if (el.execType === EXEC_TYPES.seq) {
+            if (el.execMode === EXEC_MODES.seq) {
                 const newChildren = [];
                 for (let i = 0; i < el.children.length; i++) {
                     const el1 = el.children[i];
@@ -236,14 +245,13 @@ class ElementTree {
                     newChildren.push(el1);
                     if (el2) {
                         if (
-                            el1.execType === EXEC_TYPES.par &&
-                            el2.execType === EXEC_TYPES.par &&
+                            el1.execMode === EXEC_MODES.par &&
+                            el2.execMode === EXEC_MODES.par &&
                             el1.children.length > 1 &&
                             el2.children.length > 1
                         ) {
                             // не передаем parent в конструктор, т.к. добавим в список children ниже
-                            const node = new Element();
-                            node.type = 'NODE';
+                            const node = new BPNode({ bp: this, type: 'NODE' });
                             node.parent = el;
                             node.level = el.level + 1;
                             node.w = 1;
@@ -260,7 +268,7 @@ class ElementTree {
 
     findLinks() {
         this.elems.forEach(el => {
-            if (el.execType === EXEC_TYPES.seq && el.children.length > 1) {
+            if (el.execMode === EXEC_MODES.seq && el.children.length > 1) {
                 for (let i = 0; i < el.children.length - 1; i++) {
                     this.links.push({
                         src: el.children[i],
@@ -279,14 +287,14 @@ class ElementTree {
                 if (link.dst.children.length > 1) {
                     isFound = true;
                     link.status = 'deleted';
-                    if (link.dst.execType === EXEC_TYPES.seq) {
+                    if (link.dst.execMode === EXEC_MODES.seq) {
                         this.links.push({
                             src: link.src,
                             dst: link.dst.children[0],
                             status: 'active'
                         });
                     }
-                    if (link.dst.execType === EXEC_TYPES.par) {
+                    if (link.dst.execMode === EXEC_MODES.par) {
                         link.dst.children.forEach(cld =>
                             this.links.push({ src: link.src, dst: cld, status: 'active' })
                         );
@@ -301,14 +309,14 @@ class ElementTree {
                 if (link.src.children.length > 1) {
                     isFound = true;
                     link.status = 'deleted';
-                    if (link.src.execType === EXEC_TYPES.seq) {
+                    if (link.src.execMode === EXEC_MODES.seq) {
                         this.links.push({
                             src: link.src.children.at(-1),
                             dst: link.dst,
                             status: 'active'
                         });
                     }
-                    if (link.src.execType === EXEC_TYPES.par) {
+                    if (link.src.execMode === EXEC_MODES.par) {
                         link.src.children.forEach(cld =>
                             this.links.push({ src: cld, dst: link.dst, status: 'active' })
                         );
@@ -321,6 +329,6 @@ class ElementTree {
     }
 }
 
-const tree = new ElementTree();
-tree.genarateRandomTree();
-tree.findLinks();
+const bp = new BP();
+bp.genarateRandomTree();
+bp.findLinks();

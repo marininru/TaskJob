@@ -270,6 +270,7 @@ class BP {
                             // не передаем parent в конструктор, т.к. добавим в список children ниже
                             const node = new BPNode({ bp: this, type: 'NODE' });
                             node.parent = el;
+                            node.level = el.level + 1;
                             node.w = 1;
                             node.h = 1;
                             newChildren.push(node);

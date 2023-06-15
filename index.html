@@ -12,8 +12,11 @@
                 let canvas = document.getElementById('сanvas');
                 let ctx = canvas.getContext('2d');
                 ctx.translate(1, 1);
-                bp.drawTree(divTree);
-                bp.drawSchema(ctx);
+                const bp = new BP();
+                bp.genarateRandomBP();
+                const tree = new BPTree(bp, ctx);
+                tree.drawTree(divTree);
+                tree.drawSchema(ctx);
             });
         </script>
     </head>

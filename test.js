@@ -3,8 +3,108 @@ const EXEC_ICON = { [EXEC_MODES.seq]: '→', [EXEC_MODES.par]: '∥' };
 const ratio = 100;
 
 class BPTree {
-    constructor(bp) {
+    constructor(bp, ctx) {
         this.bp = bp;
+        this.ctx = ctx;
+    }
+
+    drawElement(el) {
+        const ctx = this.ctx;
+
+        const levelRatio = el.level * 10;
+        ctx.fillStyle = el.getBgColor();
+        ctx.strokeStyle = el.getColor();
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.rect(
+            el.l * ratio + levelRatio,
+            el.t * ratio + levelRatio,
+            el.w * ratio - 2 * levelRatio,
+            el.h * ratio - 2 * levelRatio
+        );
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = ctx.strokeStyle;
+        ctx.font = '10px Arial';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.fillText(el.id, el.l * ratio + levelRatio + 1, el.t * ratio + levelRatio + 1);
+    }
+
+    drawArrow(fromX, fromY, toX, toY) {
+        const ctx = this.ctx;
+        ctx.strokeStyle = 'black';
+        ctx.lineWidth = 1;
+        ctx.lineCap = 'round';
+
+        ctx.beginPath();
+        ctx.moveTo(fromX, fromY);
+        ctx.lineTo(toX, toY);
+        ctx.stroke();
+
+        drawArrowhead(toX, toY, Math.atan2(toY - fromY, toX - fromX));
+
+        function drawArrowhead(x, y, radians) {
+            const arrowSize = 10;
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(
+                x - arrowSize * Math.cos(radians - Math.PI / 10),
+                y - arrowSize * Math.sin(radians - Math.PI / 10)
+            );
+            ctx.moveTo(x, y);
+            ctx.lineTo(
+                x - arrowSize * Math.cos(radians + Math.PI / 10),
+                y - arrowSize * Math.sin(radians + Math.PI / 10)
+            );
+            ctx.stroke();
+        }
+    }
+
+    drawSchema() {
+        const ctx = this.ctx;
+
+        const drawLink = (link, ctx) => {
+            this.drawArrow(
+                ctx,
+                link.src.l * ratio + ratio / 2 + 10,
+                link.src.t * ratio + ratio / 2,
+                link.dst.l * ratio + ratio / 2 - 10,
+                link.dst.t * ratio + ratio / 2
+            );
+        };
+        this.bp.elems.forEach(el => {
+            this.drawElement(el, ctx);
+        });
+        this.bp.links.forEach(link => drawLink(link, ctx));
+    }
+
+    drawTree(domElement) {
+        function buildTree(el, parentDomElem) {
+            if (!parentDomElem) {
+                parentUl = document.createElement('ul');
+                document.body.appendChild(parentDomElem);
+            }
+
+            var li = document.createElement('li');
+
+            li.innerHTML = `<span style="color:${el.getColor()}">${el.id}: ${
+                el.type
+            } ${el.getExecTypeIcon()}</span>`;
+
+            parentDomElem.appendChild(li);
+
+            if (el.children && el.children.length > 0) {
+                var ul = document.createElement('ul');
+                li.appendChild(ul);
+
+                for (var i = 0; i < el.children.length; i++) {
+                    buildTree(el.children[i], ul);
+                }
+            }
+        }
+
+        buildTree(this.bp.root, domElement);
     }
 }
 
@@ -102,16 +202,23 @@ class BP {
         });
     }
 
-    genarateRandomTree() {
+    genarateRandomBP() {
         const allElems = [];
-        const el = new BPNode({});
+        const el = new BPNode({
+            type: 'TASK',
+            execMode: Math.random() < 0.5 ? EXEC_MODES.par : EXEC_MODES.seq
+        });
         allElems.push(el);
         this.addRootElement(el);
 
         for (let i = 0; i < 5; i++) {
             const parentIdx = Math.floor(Math.random() * allElems.length);
             for (let j = 0; j < Math.floor(Math.random() * 2 + 2); j++) {
-                const el = new BPNode({ parent: allElems[parentIdx] });
+                const el = new BPNode({
+                    parent: allElems[parentIdx],
+                    type: Math.random() < 0.7 ? 'TASK' : 'JOB',
+                    execMode: Math.random() < 0.5 ? EXEC_MODES.par : EXEC_MODES.seq
+                });
                 allElems.push(el);
             }
         }
@@ -122,12 +229,11 @@ class BP {
             el.t = 0;
             el.l = 0;
             if (el.children.length) {
-                el.type = 'TASK';
-                el.execMode = Math.random() < 0.5 ? EXEC_MODES.par : EXEC_MODES.seq;
                 el.w = 0;
                 el.h = 0;
             } else {
                 el.type = 'JOB';
+                el.execMode = EXEC_MODES.seq;
                 el.w = 1;
                 el.h = 1;
             }
@@ -139,100 +245,7 @@ class BP {
         this.arrangeElems();
         this.recalcSizes();
         this.recalcPositions();
-    }
-
-    drawTree(domElement) {
-        function buildTree(el, parentDomElem) {
-            if (!parentDomElem) {
-                parentUl = document.createElement('ul');
-                document.body.appendChild(parentDomElem);
-            }
-
-            var li = document.createElement('li');
-
-            li.innerHTML = `<span style="color:${el.getColor()}">${el.id}: ${
-                el.type
-            } ${el.getExecTypeIcon()}</span>`;
-
-            parentDomElem.appendChild(li);
-
-            if (el.children && el.children.length > 0) {
-                var ul = document.createElement('ul');
-                li.appendChild(ul);
-
-                for (var i = 0; i < el.children.length; i++) {
-                    buildTree(el.children[i], ul);
-                }
-            }
-        }
-
-        buildTree(this.root, domElement);
-    }
-
-    drawElement(el, ctx) {
-        const levelRatio = el.level * 10;
-        ctx.fillStyle = el.getBgColor();
-        ctx.strokeStyle = el.getColor();
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.rect(
-            el.l * ratio + levelRatio,
-            el.t * ratio + levelRatio,
-            el.w * ratio - 2 * levelRatio,
-            el.h * ratio - 2 * levelRatio
-        );
-        ctx.fill();
-        ctx.stroke();
-        ctx.fillStyle = ctx.strokeStyle;
-        ctx.font = '10px Arial';
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'top';
-        ctx.fillText(el.id, el.l * ratio + levelRatio + 1, el.t * ratio + levelRatio + 1);
-    }
-
-    drawArrow(ctx, fromX, fromY, toX, toY) {
-        ctx.strokeStyle = 'black';
-        ctx.lineWidth = 1;
-        ctx.lineCap = 'round';
-
-        ctx.beginPath();
-        ctx.moveTo(fromX, fromY);
-        ctx.lineTo(toX, toY);
-        ctx.stroke();
-
-        drawArrowhead(toX, toY, Math.atan2(toY - fromY, toX - fromX));
-
-        function drawArrowhead(x, y, radians) {
-            const arrowSize = 10;
-            ctx.beginPath();
-            ctx.moveTo(x, y);
-            ctx.lineTo(
-                x - arrowSize * Math.cos(radians - Math.PI / 10),
-                y - arrowSize * Math.sin(radians - Math.PI / 10)
-            );
-            ctx.moveTo(x, y);
-            ctx.lineTo(
-                x - arrowSize * Math.cos(radians + Math.PI / 10),
-                y - arrowSize * Math.sin(radians + Math.PI / 10)
-            );
-            ctx.stroke();
-        }
-    }
-
-    drawSchema(ctx) {
-        const drawLink = (link, ctx) => {
-            this.drawArrow(
-                ctx,
-                link.src.l * ratio + ratio / 2 + 10,
-                link.src.t * ratio + ratio / 2,
-                link.dst.l * ratio + ratio / 2 - 10,
-                link.dst.t * ratio + ratio / 2
-            );
-        };
-        this.elems.forEach(el => {
-            this.drawElement(el, ctx);
-        });
-        this.links.forEach(link => drawLink(link, ctx));
+        this.findLinks();
     }
 
     appendExtraNodes() {
@@ -328,7 +341,3 @@ class BP {
         } while (isFound);
     }
 }
-
-const bp = new BP();
-bp.genarateRandomTree();
-bp.findLinks();

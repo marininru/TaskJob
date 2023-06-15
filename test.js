@@ -63,6 +63,7 @@ class BPTree {
 
     drawSchema() {
         const ctx = this.ctx;
+        ctx.clearRect(-1, -1, 10000, 10000);
 
         const drawLink = link => {
             this.drawArrow(
@@ -103,6 +104,7 @@ class BPTree {
             }
         }
 
+        domElement.innerHTML = '';
         buildTree(this.bp.root, domElement);
     }
 }
@@ -140,6 +142,10 @@ class BPNode {
 
 class BP {
     constructor() {
+        this.clear();
+    }
+
+    clear() {
         this.idCounter = 1;
         this.root = null;
         this.elems = [];
@@ -207,6 +213,8 @@ class BP {
     }
 
     genarateRandomBP() {
+        this.clear();
+
         const allElems = [];
         const el = new BPNode({
             bp: this,
@@ -343,4 +351,10 @@ class BP {
             this.links = this.links.filter(link => link.status !== 'deleted');
         } while (isFound);
     }
+}
+
+function scriptToTree(bp) {
+    const root = bp.addRootElement({ type: 'TASK', execMode: 'C' });
+    const t1 = root.appendChild({ type: 'TASK', execMode: 'P' });
+    t1.appendChild({ type: 'JOB', execMode: 'C' });
 }

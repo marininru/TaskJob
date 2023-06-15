@@ -64,9 +64,8 @@ class BPTree {
     drawSchema() {
         const ctx = this.ctx;
 
-        const drawLink = (link, ctx) => {
+        const drawLink = link => {
             this.drawArrow(
-                ctx,
                 link.src.l * ratio + ratio / 2 + 10,
                 link.src.t * ratio + ratio / 2,
                 link.dst.l * ratio + ratio / 2 - 10,
@@ -110,7 +109,7 @@ class BPTree {
 
 class BPNode {
     constructor({ bp, type, execMode, parent }) {
-        this.id = undefined;
+        this.id = bp ? bp.getNodeId() : undefined;
         this.type = type;
         this.execMode = execMode;
         this.parent = parent;
@@ -141,9 +140,14 @@ class BPNode {
 
 class BP {
     constructor() {
+        this.idCounter = 1;
         this.root = null;
         this.elems = [];
         this.links = [];
+    }
+
+    getNodeId() {
+        return this.idCounter++;
     }
 
     addRootElement(el) {
@@ -205,6 +209,7 @@ class BP {
     genarateRandomBP() {
         const allElems = [];
         const el = new BPNode({
+            bp: this,
             type: 'TASK',
             execMode: Math.random() < 0.5 ? EXEC_MODES.par : EXEC_MODES.seq
         });
@@ -215,6 +220,7 @@ class BP {
             const parentIdx = Math.floor(Math.random() * allElems.length);
             for (let j = 0; j < Math.floor(Math.random() * 2 + 2); j++) {
                 const el = new BPNode({
+                    bp: this,
                     parent: allElems[parentIdx],
                     type: Math.random() < 0.7 ? 'TASK' : 'JOB',
                     execMode: Math.random() < 0.5 ? EXEC_MODES.par : EXEC_MODES.seq
@@ -223,9 +229,7 @@ class BP {
             }
         }
 
-        let cnt = 1;
         const filler = el => {
-            el.id = cnt++;
             el.t = 0;
             el.l = 0;
             if (el.children.length) {
@@ -266,10 +270,8 @@ class BP {
                             // не передаем parent в конструктор, т.к. добавим в список children ниже
                             const node = new BPNode({ bp: this, type: 'NODE' });
                             node.parent = el;
-                            node.level = el.level + 1;
                             node.w = 1;
                             node.h = 1;
-                            node.id = 0;
                             newChildren.push(node);
                         }
                     }

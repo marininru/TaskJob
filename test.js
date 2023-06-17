@@ -177,6 +177,16 @@ class BP {
 
     recalcSizes() {
         const reversed = [...this.elems].reverse();
+
+        reversed.forEach(el => {
+            el.t = 0;
+            el.l = 0;
+            if (el.children.length === 0) {
+                el.w = 1;
+                el.h = 1;
+            }
+        });
+
         reversed.forEach(el => {
             if (el.children.length) {
                 let w = 0;
@@ -238,20 +248,17 @@ class BP {
         }
 
         const filler = el => {
-            el.t = 0;
-            el.l = 0;
-            if (el.children.length) {
-                el.w = 0;
-                el.h = 0;
-            } else {
+            if (el.children.length === 0) {
                 el.type = 'JOB';
                 el.execMode = EXEC_MODES.seq;
-                el.w = 1;
-                el.h = 1;
             }
         };
 
         this.scanTree(filler);
+        this.analyzeTree();
+    }
+
+    analyzeTree() {
         this.arrangeElems();
         this.appendExtraNodes();
         this.arrangeElems();
@@ -353,8 +360,53 @@ class BP {
     }
 }
 
-function scriptToTree(bp) {
-    const root = bp.addRootElement({ type: 'TASK', execMode: 'C' });
-    const t1 = root.appendChild({ type: 'TASK', execMode: 'P' });
-    t1.appendChild({ type: 'JOB', execMode: 'C' });
+////////////////////////////////
+
+class BPNodeScriptWrapper {
+    constructor(node) {
+        this.node = node;
+    }
+
+    static createNode(obj, bp) {
+        return new BPNode({
+            bp: bp,
+            type: obj.type,
+            execMode: obj.execMode
+        });
+    }
+
+    appendChild(obj) {
+        const cldNode = new BPNode({
+            bp: this.node.bp,
+            parent: this.node,
+            type: obj.type,
+            execMode: obj.execMode
+        });
+        return new BPNodeScriptWrapper(cldNode);
+    }
+}
+class BPScriptWrapper {
+    constructor(bp) {
+        this.bp = bp;
+    }
+
+    addRootElement(obj) {
+        const el = BPNodeScriptWrapper.createNode(obj, this.bp);
+        this.bp.addRootElement(el);
+        return new BPNodeScriptWrapper(el);
+    }
+}
+
+const defaultScript = `const root = bp.addRootElement({ type: 'TASK', execMode: 'C' });
+let t1 = root.appendChild({ type: 'TASK', execMode: 'P' });
+t1.appendChild({ type: 'JOB', execMode: 'C' });
+t1.appendChild({ type: 'JOB', execMode: 'C' });
+
+t1 = root.appendChild({ type: 'TASK', execMode: 'P' });
+t1.appendChild({ type: 'JOB', execMode: 'C' });
+t1.appendChild({ type: 'JOB', execMode: 'C' });`;
+
+function scriptToTree(bp, script) {
+    const f = new Function('bp', script);
+    f(bp);
 }
